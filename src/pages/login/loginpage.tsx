@@ -1,59 +1,36 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Text, View, TouchableOpacity } from 'react-native';
+import { Text, View } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { useEffect, useState } from 'react';
 import { style } from './styles';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 
-export function TelaSegura() {
+export default function Login() {
   const navigation = useNavigation<NavigationProp<any>>();
 
   useEffect(() => {
-    (async () => {
-      const authentication = await LocalAuthentication.authenticateAsync();
+    const autenticar = async () => {
+      try {
+        const authentication =
+          await LocalAuthentication.authenticateAsync({
+            promptMessage: 'Autentique-se para entrar no FishSpot',
+            cancelLabel: 'Cancelar',
+          });
 
-      if (authentication.success) {
-        navigation.navigate("BottomRoutes");
+        if (authentication.success) {
+          navigation.navigate('BottomRoutes');
+        }
+      } catch (error) {
+        console.error('Erro na autenticação:', error);
       }
-    })();
-  }, []);
+    };
 
-  return (
-    <View>
-      <Text>Autenticando...</Text>
-    </View>
-  );
-}
-
-export default function Login() {
-  const [biometria, setBiometria] = useState(false);
-  const [render, setRender] = useState(false);
-
-  const changeRender = () => setRender(true);
-
-  useEffect(() => {
-    (async () => {
-      const compativel = await LocalAuthentication.hasHardwareAsync();
-      setBiometria(compativel);
-    })();
-  }, []);
-
-  if (render) {
-    return <TelaSegura />;
-  }
+    autenticar();
+  }, [navigation]);
 
   return (
     <View style={style.container}>
-      <Text>
-        {biometria
-          ? 'Faça o login com biometria'
-          : 'Dispositivo não compatível com biometria'}
-      </Text>
-
-      <TouchableOpacity onPress={changeRender}>
-        <Text>Logar</Text>
-      </TouchableOpacity>
+      <Text>Autenticando...</Text>
 
       <StatusBar style="auto" />
     </View>
