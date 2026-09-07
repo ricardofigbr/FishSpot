@@ -15,8 +15,6 @@ import {
   useCameraPermissions,
 } from 'expo-camera';
 
-import * as MediaLibrary from 'expo-media-library';
-
 import {
   SafeAreaProvider,
   SafeAreaView,
@@ -33,37 +31,31 @@ function CameraScreen() {
   const [cameraPermission, requestCameraPermission] =
     useCameraPermissions();
 
-  const [mediaPermission, requestMediaPermission] =
-    MediaLibrary.usePermissions({
-      writeOnly: true,
-    });
-
   async function requestPermissions() {
     try {
       const cameraResult = await requestCameraPermission();
-      const mediaResult = await requestMediaPermission();
 
-      if (!cameraResult.granted || !mediaResult.granted) {
+      if (!cameraResult.granted) {
         Alert.alert(
-          'Permissões necessárias',
-          'É necessário permitir o uso da câmera e o salvamento de fotos.'
+          'Permissão necessária',
+          'É necessário permitir o uso da câmera.'
         );
 
         return;
       }
 
       Alert.alert(
-        'Permissões concedidas',
-        'Agora você pode tirar e salvar fotos.'
+        'Permissão concedida',
+        'Agora você pode tirar fotos.'
       );
     } catch (error) {
-      console.error('Erro ao solicitar permissões:', error);
+      console.error('Erro ao solicitar permissão:', error);
 
       Alert.alert(
         'Erro',
         error instanceof Error
           ? error.message
-          : 'Não foi possível solicitar as permissões.'
+          : 'Não foi possível solicitar a permissão.'
       );
     }
   }
@@ -108,35 +100,16 @@ function CameraScreen() {
           : 0
       );
 
-      let permission = mediaPermission;
-
-      if (!permission || !permission.granted) {
-        permission = await requestMediaPermission();
-      }
-
-      if (!permission || !permission.granted) {
-        throw new Error(
-          'A permissão para salvar a foto não foi concedida.'
-        );
-      }
-
-      await MediaLibrary.saveToLibraryAsync(photo.uri);
-
-      console.log('Status: foto salva com sucesso');
-      console.log('Destino: galeria geral do celular');
-      console.log('Nome do arquivo:', fileName);
-      console.log('URI original:', photo.uri);
-
       setCapturedImage(photo.uri);
       setModalVisible(true);
 
       Alert.alert(
-        'Foto salva com sucesso',
-        'A foto foi salva na galeria geral do celular.'
+        'Foto capturada com sucesso',
+        'A foto está disponível para visualização.'
       );
     } catch (error) {
       console.error(
-        'Erro ao capturar ou salvar a foto:',
+        'Erro ao capturar a foto:',
         error
       );
 
@@ -144,14 +117,14 @@ function CameraScreen() {
         'Erro',
         error instanceof Error
           ? error.message
-          : 'Não foi possível capturar ou salvar a foto.'
+          : 'Não foi possível capturar a foto.'
       );
     } finally {
       setIsSaving(false);
     }
   }
 
-  if (!cameraPermission || !mediaPermission) {
+  if (!cameraPermission) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>
@@ -161,18 +134,15 @@ function CameraScreen() {
     );
   }
 
-  if (
-    !cameraPermission.granted ||
-    !mediaPermission.granted
-  ) {
+  if (!cameraPermission.granted) {
     return (
       <View style={styles.permissionContainer}>
         <Text style={styles.permissionTitle}>
-          Permissões necessárias
+          Permissão necessária
         </Text>
 
         <Text style={styles.permissionMessage}>
-          Autorize o uso da câmera e o salvamento de fotos na galeria.
+          Autorize o uso da câmera para tirar fotos.
         </Text>
 
         <TouchableOpacity
@@ -180,7 +150,7 @@ function CameraScreen() {
           onPress={requestPermissions}
         >
           <Text style={styles.permissionButtonText}>
-            Conceder permissões
+            Conceder permissão
           </Text>
         </TouchableOpacity>
       </View>
@@ -230,7 +200,7 @@ function CameraScreen() {
         {isSaving && (
           <View style={styles.savingContainer}>
             <Text style={styles.savingText}>
-              Salvando foto...
+              Capturando foto...
             </Text>
           </View>
         )}
@@ -263,7 +233,7 @@ function CameraScreen() {
           )}
 
           <Text style={styles.savedMessage}>
-            Foto salva na galeria
+            Foto capturada
           </Text>
         </SafeAreaView>
       </Modal>
