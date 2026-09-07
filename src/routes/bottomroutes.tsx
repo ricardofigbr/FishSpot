@@ -1,7 +1,8 @@
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import List from '../pages/list/listpage';
 import Map from '../pages/map/mappage';
-import Camera from '../pages/camera/camerapage';
 
 const Tab = createBottomTabNavigator();
 
@@ -9,19 +10,32 @@ export default function BottomRoutes() {
   return (
     <Tab.Navigator
       initialRouteName="List"
-      screenOptions={{ headerShown: false }}
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: '#2e7d32',
+        tabBarInactiveTintColor: 'gray',
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap = 'list';
+
+          if (route.name === 'List') {
+            iconName = focused ? 'list' : 'list-outline';
+          } else if (route.name === 'Map') {
+            iconName = focused ? 'map' : 'map-outline';
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
     >
-      <Tab.Screen
-        name="List"
-        component={List}
+      <Tab.Screen 
+        name="List" 
+        component={List} 
+        options={{ title: 'Lista' }} 
       />
-      <Tab.Screen
-        name="Map"
-        component={Map}
-      />
-      <Tab.Screen
-        name="Camera"
-        component={Camera}
+      <Tab.Screen 
+        name="Map" 
+        component={Map} 
+        options={{ title: 'Mapa' }} 
       />
     </Tab.Navigator>
   );

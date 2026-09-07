@@ -4,36 +4,36 @@ import Login from "../pages/login/loginpage";
 import BottomRoutes from "./bottomroutes";
 import Map from "../pages/map/mappage";
 import Camera from "../pages/camera/camerapage";
+import { SpotsProvider } from "../pages/list/spotscontext";
 
+export default function Routes() {
+  const Stack = createNativeStackNavigator();
 
-export default function Routes(){
-    const Stack = createNativeStackNavigator()
-
-    return(
-        <Stack.Navigator
-            initialRouteName="Login"
-            screenOptions={{
-                headerShown: false,
-            }}
-            >
-
-            <Stack.Screen 
-                name="Login"
-                component={Login}
-            />
-            <Stack.Screen 
-                name="BottomRoutes"
-                component={BottomRoutes}
-            />
-            <Stack.Screen 
-                name="Map"
-                component={Map}
-            />
-            <Stack.Screen 
-                name="Camera"
-                component={Camera}
-            />
-
-        </Stack.Navigator>
-    )
+  return (
+    <SpotsProvider>
+      <Stack.Navigator
+        initialRouteName="Login"
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen 
+          name="Login"
+          component={Login}
+        />
+        <Stack.Screen 
+          name="BottomRoutes"
+          component={BottomRoutes}
+        />
+        <Stack.Screen 
+          name="Map"
+          component={Map}
+        />
+        <Stack.Screen 
+          name="Camera"
+          component={Camera}
+        />
+      </Stack.Navigator>
+    </SpotsProvider>
+  );
 }
