@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import List from '../pages/list/ListPage';
 import Map from '../pages/map/MapPage';
+import User from '../pages/user/UserPage';
 
 const Tab = createBottomTabNavigator();
 
@@ -21,6 +22,8 @@ export default function BottomRoutes() {
             iconName = focused ? 'list' : 'list-outline';
           } else if (route.name === 'Map') {
             iconName = focused ? 'map' : 'map-outline';
+          } else if (route.name === 'User') {
+            iconName = focused ? 'person' : 'person-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -36,6 +39,11 @@ export default function BottomRoutes() {
         name="Map" 
         component={Map} 
         options={{ title: 'Mapa' }} 
+      />
+      <Tab.Screen 
+        name="User" 
+        component={User} 
+        options={{ title: 'Perfil' }} 
       />
     </Tab.Navigator>
   );
