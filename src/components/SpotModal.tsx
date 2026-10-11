@@ -1,5 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Alert } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 interface SpotModalProps {
@@ -16,24 +28,10 @@ interface SpotModalProps {
 }
 
 export default function SpotModal({ visible, onClose, title, initialData, onSave }: SpotModalProps) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [mainImage, setMainImage] = useState<string | undefined>(undefined);
-  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (initialData) {
-      setName(initialData.name || '');
-      setDescription(initialData.description || '');
-      setMainImage(initialData.image);
-      setGalleryPhotos(initialData.photos || []);
-    } else {
-      setName('');
-      setDescription('');
-      setMainImage(undefined);
-      setGalleryPhotos([]);
-    }
-  }, [initialData, visible]);
+  const [name, setName] = useState(initialData?.name ?? '');
+  const [description, setDescription] = useState(initialData?.description ?? '');
+  const [mainImage, setMainImage] = useState<string | undefined>(initialData?.image);
+  const [galleryPhotos, setGalleryPhotos] = useState<string[]>(initialData?.photos ?? []);
 
   // Função auxiliar para exibir a escolha entre Câmera e Galeria
   const selectImageSource = (onImagePicked: (uri: string) => void) => {
@@ -101,11 +99,20 @@ export default function SpotModal({ visible, onClose, title, initialData, onSave
 
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
-      <View style={localStyles.modalOverlay}>
-        <View style={localStyles.modalContent}>
-          <Text style={localStyles.modalTitle}>{title}</Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={localStyles.modalOverlay}>
+          <View style={localStyles.modalContent}>
+            <Text style={localStyles.modalTitle}>{title}</Text>
 
-          <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              keyboardDismissMode="none"
+              keyboardShouldPersistTaps="handled"
+            >
             <Text style={localStyles.label}>Nome do Ponto *</Text>
             <TextInput
               style={localStyles.input}
@@ -133,7 +140,13 @@ export default function SpotModal({ visible, onClose, title, initialData, onSave
             </TouchableOpacity>
 
             <Text style={localStyles.label}>Fotos da Galeria ({galleryPhotos.length})</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyboardDismissMode="none"
+              keyboardShouldPersistTaps="handled"
+              style={{ marginBottom: 15 }}
+            >
               {galleryPhotos.map((uri, index) => (
                 <Image key={index} source={{ uri }} style={localStyles.galleryThumbnail} />
               ))}
@@ -150,9 +163,10 @@ export default function SpotModal({ visible, onClose, title, initialData, onSave
                 <Text style={localStyles.btnText}>Salvar</Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
+            </ScrollView>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -4,8 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import List from '../pages/list/ListPage';
 import Map from '../pages/map/MapPage';
 import User from '../pages/user/UserPage';
+import Iscabox from '../pages/iscaboxAPI/IscaboxApiPage';
 
 const Tab = createBottomTabNavigator();
+
+const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+  List: 'list',
+  Iscabox: 'fish',
+  Map: 'map',
+  User: 'person',
+};
 
 export default function BottomRoutes() {
   return (
@@ -16,15 +24,9 @@ export default function BottomRoutes() {
         tabBarActiveTintColor: '#2e7d32',
         tabBarInactiveTintColor: 'gray',
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'list';
+          const baseName = iconMap[route.name] || 'list';
 
-          if (route.name === 'List') {
-            iconName = focused ? 'list' : 'list-outline';
-          } else if (route.name === 'Map') {
-            iconName = focused ? 'map' : 'map-outline';
-          } else if (route.name === 'User') {
-            iconName = focused ? 'person' : 'person-outline';
-          }
+          const iconName = focused ? baseName : (`${baseName}-outline` as keyof typeof Ionicons.glyphMap);
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
@@ -34,6 +36,11 @@ export default function BottomRoutes() {
         name="List" 
         component={List} 
         options={{ title: 'Lista' }} 
+      />
+      <Tab.Screen
+        name="Iscabox"
+        component={Iscabox}
+        options={{ title: 'Iscabox' }}
       />
       <Tab.Screen 
         name="Map" 

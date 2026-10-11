@@ -2,9 +2,24 @@ import { StyleSheet } from 'react-native';
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  map: { flex: 1 },
+  map: { flex: 1, width: '100%', height: '100%' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  mapFrame: { flex: 1, width: '100%', height: '100%' },
   loadingText: { marginTop: 10, color: '#666' },
+  syncNotice: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    right: 12,
+    backgroundColor: '#fff8e1',
+    borderColor: '#f9a825',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    elevation: 3,
+  },
+  syncNoticeText: { color: '#5d4037', fontSize: 13 },
   saveButton: {
     position: 'absolute',
     bottom: 30,

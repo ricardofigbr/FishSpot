@@ -1,176 +1,178 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, TextInput, Modal, ScrollView, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as ImagePicker from 'expo-image-picker';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
+import React, { useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import styles from './styles';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  firebaseEmailToUsername,
+  getAuthErrorMessage,
+  signOutAccount,
+  updateAccountName,
+  updateAccountPassword,
+} from '../../services/firebaseAuth';
 
 export default function UserPage() {
-  const navigation = useNavigation<NavigationProp<any>>();
-  const [user, setUser] = useState<{ name: string; username: string; password?: string; photo?: string | null } | null>(null);
+  const { user, deviceAuthenticationAvailable, deviceAuthenticationStatus } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
-
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [photo, setPhoto] = useState<string | null>(null);
-
-  const loadUserData = async () => {
-    try {
-      const userJson = await AsyncStorage.getItem('@fishspot_user');
-      if (userJson) {
-        const parsed = JSON.parse(userJson);
-        setUser(parsed);
-        setName(parsed.name || '');
-        setUsername(parsed.username || '');
-        setPassword(parsed.password || '');
-        setPhoto(parsed.photo || null);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setPhoto(result.assets[0].uri);
-    }
-  };
+  const [name, setName] = useState(user?.displayName ?? '');
+  const [savedName, setSavedName] = useState(user?.displayName ?? '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const username = firebaseEmailToUsername(user?.email);
 
   const handleSave = async () => {
-    if (!name.trim() || !username.trim() || !password.trim()) {
-      Alert.alert('Atenção', 'Preencha todos os campos obrigatórios.');
+    if (!user) return;
+    if (!name.trim()) {
+      Alert.alert('Atenção', 'Informe seu nome.');
+      return;
+    }
+
+    if (newPassword && newPassword.length < 6) {
+      Alert.alert('Atenção', 'A nova senha precisa ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (newPassword && !currentPassword) {
+      Alert.alert('Atenção', 'Informe a senha atual para alterá-la.');
       return;
     }
 
     try {
-      const updatedUser = {
-        name: name.trim(),
-        username: username.trim().toLowerCase(),
-        password: password,
-        photo: photo,
-      };
-
-      await AsyncStorage.setItem('@fishspot_user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      if (newPassword) {
+        await updateAccountPassword(user, currentPassword, newPassword);
+      }
+      await updateAccountName(user, name);
+      setSavedName(name.trim());
       setModalVisible(false);
-      Alert.alert('Sucesso', 'Informações atualizadas com sucesso!');
-    } catch (e) {
-      Alert.alert('Erro', 'Não foi possível atualizar os dados.');
+      setCurrentPassword('');
+      setNewPassword('');
+      Alert.alert('Sucesso', 'Perfil atualizado.');
+    } catch (error) {
+      Alert.alert('Não foi possível atualizar', getAuthErrorMessage(error));
     }
   };
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('@fishspot_logged_in');
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
-    } catch (e) {
-      console.error(e);
+      await signOutAccount();
+    } catch (error) {
+      Alert.alert('Não foi possível sair', getAuthErrorMessage(error));
     }
   };
 
   return (
-    <SafeAreaView style={localStyles.container}>
-      <Text style={localStyles.headerTitle}>Meu Perfil</Text>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.headerTitle}>Meu Perfil</Text>
 
-      <View style={localStyles.card}>
-        {user?.photo ? (
-          <Image source={{ uri: user.photo }} style={localStyles.avatar} />
-        ) : (
-          <View style={localStyles.avatarPlaceholder}>
-            <Text style={localStyles.avatarPlaceholderText}>Sem Foto</Text>
-          </View>
-        )}
+      <View style={styles.card}>
+        <View style={styles.avatarPlaceholder}>
+          <Text style={styles.avatarPlaceholderText}>
+            {savedName ? savedName.slice(0, 1).toUpperCase() : 'FS'}
+          </Text>
+        </View>
 
-        <Text style={localStyles.labelName}>{user?.name || 'Carregando...'}</Text>
-        <Text style={localStyles.labelUsername}>@{user?.username || ''}</Text>
+        <Text style={styles.labelName}>{savedName || 'Usuário'}</Text>
+        <Text style={styles.labelUsername}>@{username}</Text>
+        <Text style={styles.biometricInfo}>
+          {deviceAuthenticationAvailable
+            ? deviceAuthenticationStatus === 'device-credential'
+              ? 'Ao voltar ao FishSpot, o padrão ou código de bloqueio deste aparelho será solicitado.'
+              : 'Ao voltar ao FishSpot, a biometria ou o código de bloqueio do aparelho será solicitado.'
+            : deviceAuthenticationStatus === 'checking'
+              ? 'Verificando a autenticação deste aparelho...'
+              : deviceAuthenticationStatus === 'not-enrolled'
+                ? 'O aparelho tem sensor biométrico, mas não há impressão digital, rosto ou bloqueio de tela configurado para confirmar a identidade.'
+                : deviceAuthenticationStatus === 'unsupported'
+                  ? 'O sistema não detectou biometria nem padrão ou código de bloqueio configurado.'
+                  : 'O app não conseguiu consultar a autenticação do aparelho. Feche e abra o app; se continuar, pode ser necessário instalar uma nova build.'}
+        </Text>
 
-        <TouchableOpacity style={localStyles.editButton} onPress={() => setModalVisible(true)}>
-          <Text style={localStyles.buttonText}>Editar Perfil</Text>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => {
+            setName(savedName);
+            setCurrentPassword('');
+            setNewPassword('');
+            setModalVisible(true);
+          }}
+        >
+          <Text style={styles.buttonText}>Editar Nome</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={localStyles.logoutButton} onPress={handleLogout}>
-          <Text style={localStyles.buttonText}>Sair da Conta</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.buttonText}>Sair da Conta</Text>
         </TouchableOpacity>
       </View>
 
-      <Modal visible={modalVisible} animationType="slide" transparent={true} onRequestClose={() => setModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={localStyles.modalOverlay}>
-            <View style={localStyles.modalContent}>
-              <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
-                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>Editar Informações</Text>
-
-                <TouchableOpacity onPress={pickImage} style={{ marginBottom: 15 }}>
-                  {photo ? (
-                    <Image source={{ uri: photo }} style={{ width: 80, height: 80, borderRadius: 40 }} />
-                  ) : (
-                    <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#ddd', justifyContent: 'center', alignItems: 'center' }}>
-                      <Text>+ Foto</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <ScrollView
+                style={styles.modalScrollView}
+                contentContainerStyle={styles.modalScrollContent}
+                keyboardDismissMode="none"
+                keyboardShouldPersistTaps="handled"
+              >
+                <Text style={styles.modalTitle}>Editar Nome</Text>
                 <TextInput
-                  style={localStyles.input}
+                  style={styles.input}
                   placeholder="Nome Completo"
+                  autoCapitalize="words"
                   value={name}
                   onChangeText={setName}
                 />
                 <TextInput
-                  style={localStyles.input}
-                  placeholder="Usuário"
-                  autoCapitalize="none"
-                  value={username}
-                  onChangeText={setUsername}
+                  style={styles.input}
+                  placeholder="Senha atual (opcional)"
+                  secureTextEntry
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
                 />
                 <TextInput
-                  style={localStyles.input}
-                  placeholder="Senha"
+                  style={styles.input}
+                  placeholder="Nova senha (opcional)"
                   secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
                 />
 
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 10 }}>
-                  <TouchableOpacity style={[localStyles.modalBtn, { backgroundColor: '#6b7280' }]} onPress={() => setModalVisible(false)}>
-                    <Text style={localStyles.buttonText}>Cancelar</Text>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.cancelButton]}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={styles.buttonText}>Cancelar</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[localStyles.modalBtn, { backgroundColor: '#2563eb' }]} onPress={handleSave}>
-                    <Text style={localStyles.buttonText}>Salvar</Text>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.saveButton]}
+                    onPress={handleSave}
+                  >
+                    <Text style={styles.buttonText}>Salvar</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
             </View>
           </View>
-        </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
-
-const localStyles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333' },
-  card: { backgroundColor: '#fff', width: '90%', maxWidth: 350, padding: 20, borderRadius: 10, alignItems: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
-  avatar: { width: 100, height: 100, borderRadius: 50, marginBottom: 15 },
-  avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#ddd', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  avatarPlaceholderText: { color: '#666', fontSize: 12 },
-  labelName: { fontSize: 20, fontWeight: 'bold', color: '#111', marginBottom: 5 },
-  labelUsername: { fontSize: 15, color: '#666', marginBottom: 20 },
-  editButton: { backgroundColor: '#2563eb', padding: 12, borderRadius: 6, width: '100%', alignItems: 'center', marginBottom: 10 },
-  logoutButton: { backgroundColor: '#dc2626', padding: 12, borderRadius: 6, width: '100%', alignItems: 'center' },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '90%', maxWidth: 350, backgroundColor: '#fff', borderRadius: 10, padding: 20 },
-  input: { borderWidth: 1, borderColor: '#ccc', padding: 12, marginBottom: 12, borderRadius: 6, width: '100%', fontSize: 14, backgroundColor: '#fff' },
-  modalBtn: { flex: 1, padding: 12, borderRadius: 6, alignItems: 'center', marginHorizontal: 5 }
-});

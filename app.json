@@ -26,6 +26,13 @@
           "faceIDPermission": "Permitir que o FishSpot use o Face ID para acesso rápido."
         }
       ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Permitir que o FishSpot use o Face ID para acesso rápido."
+        }
+      ],
       "expo-status-bar",
       [
         "expo-splash-screen",

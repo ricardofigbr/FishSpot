@@ -4,7 +4,6 @@ import {
   Alert,
   Image,
   Modal,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -19,6 +18,7 @@ import {
   SafeAreaProvider,
   SafeAreaView,
 } from 'react-native-safe-area-context';
+import styles from './styles';
 
 function CameraScreen() {
   const cameraRef = useRef<CameraView | null>(null);
@@ -165,7 +165,7 @@ function CameraScreen() {
       <View style={styles.cameraContainer}>
         <CameraView
           ref={cameraRef}
-          style={StyleSheet.absoluteFill}
+          style={styles.cameraPreview}
           facing={facing}
           mode="picture"
         />
@@ -248,168 +248,3 @@ export default function Camera() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
-
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-
-  permissionContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    backgroundColor: '#fff',
-  },
-
-  permissionTitle: {
-    marginBottom: 12,
-    color: '#111827',
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-
-  permissionMessage: {
-    marginBottom: 25,
-    color: '#4b5563',
-    fontSize: 16,
-    lineHeight: 23,
-    textAlign: 'center',
-  },
-
-  permissionButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: '#2563eb',
-  },
-
-  permissionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-
-  cameraContainer: {
-    flex: 1,
-    overflow: 'hidden',
-    backgroundColor: '#000',
-  },
-
-  buttonContainer: {
-    position: 'absolute',
-    right: 0,
-    bottom: 30,
-    left: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 35,
-  },
-
-  flipButton: {
-    width: 56,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 28,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-
-  captureButton: {
-    width: 76,
-    height: 76,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    borderRadius: 38,
-    backgroundColor: '#fff',
-  },
-
-  disabledButton: {
-    opacity: 0.5,
-  },
-
-  icon: {
-    width: '65%',
-    height: '65%',
-    resizeMode: 'contain',
-  },
-
-  captureIcon: {
-    width: '65%',
-    height: '65%',
-    resizeMode: 'contain',
-  },
-
-  savingContainer: {
-    position: 'absolute',
-    top: 20,
-    alignSelf: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  },
-
-  savingText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.96)',
-  },
-
-  previewImage: {
-    width: '100%',
-    height: '80%',
-  },
-
-  closeButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    zIndex: 10,
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 25,
-    backgroundColor: '#fff',
-  },
-
-  closeIcon: {
-    width: '60%',
-    height: '60%',
-    resizeMode: 'contain',
-  },
-
-  savedMessage: {
-    position: 'absolute',
-    bottom: 25,
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-});
