@@ -1,5 +1,14 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Alert,
+  Modal,
+} from 'react-native';
 import { SpotsContext, FishingSpot } from '../../contexts/SpotsContext';
 import SpotModal from '../../components/SpotModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +18,9 @@ export default function ListScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingSpot, setEditingSpot] = useState<FishingSpot | null>(null);
+
+  // Estado para armazenar a imagem que está sendo exibida em foco
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleOpenEdit = (spot: FishingSpot) => {
     setEditingSpot(spot);
@@ -22,10 +34,11 @@ export default function ListScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={localStyles.card}>
-            {/* Cabeçalho do item: Foto principal circular à esquerda + Nome e Descrição */}
             <View style={localStyles.cardHeader}>
               {item.image ? (
-                <Image source={{ uri: item.image }} style={localStyles.circularAvatar} />
+                <TouchableOpacity onPress={() => setSelectedImage(item.image ?? null)}>
+                  <Image source={{ uri: item.image }} style={localStyles.circularAvatar} />
+                </TouchableOpacity>
               ) : (
                 <View style={[localStyles.circularAvatar, localStyles.placeholderAvatar]}>
                   <Text style={localStyles.placeholderText}>Foto</Text>
@@ -38,7 +51,6 @@ export default function ListScreen() {
               </View>
             </View>
 
-            {/* Parte de baixo: Todas as fotos vinculadas (item.photos) */}
             {item.photos && item.photos.length > 0 && (
               <View style={localStyles.galleryContainer}>
                 <Text style={localStyles.galleryLabel}>Outras fotos do local:</Text>
@@ -48,13 +60,14 @@ export default function ListScreen() {
                   keyExtractor={(imgUri, index) => index.toString()}
                   showsHorizontalScrollIndicator={false}
                   renderItem={({ item: imgUri }) => (
-                    <Image source={{ uri: imgUri }} style={localStyles.galleryImage} />
+                    <TouchableOpacity onPress={() => setSelectedImage(imgUri)}>
+                      <Image source={{ uri: imgUri }} style={localStyles.galleryImage} />
+                    </TouchableOpacity>
                   )}
                 />
               </View>
             )}
             
-            {/* Botões de Ação */}
             <View style={localStyles.buttonContainer}>
               <TouchableOpacity 
                 style={[localStyles.button, localStyles.editButton]}
@@ -74,6 +87,35 @@ export default function ListScreen() {
         )}
         ListEmptyComponent={<Text style={localStyles.emptyText}>Nenhum ponto de pesca salvo.</Text>}
       />
+
+      {/* Modal para foco/visualização de foto em tela cheia */}
+      <Modal
+        visible={!!selectedImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedImage(null)}
+      >
+        <TouchableOpacity 
+          style={localStyles.fullImageOverlay} 
+          activeOpacity={1} 
+          onPress={() => setSelectedImage(null)}
+        >
+          <TouchableOpacity 
+            style={localStyles.closeButton} 
+            onPress={() => setSelectedImage(null)}
+          >
+            <Text style={localStyles.closeButtonText}>✕ Fechar</Text>
+          </TouchableOpacity>
+
+          {selectedImage && (
+            <Image 
+              source={{ uri: selectedImage }} 
+              style={localStyles.fullImage} 
+              resizeMode="contain" 
+            />
+          )}
+        </TouchableOpacity>
+      </Modal>
 
       <SpotModal
         visible={modalVisible}
@@ -119,5 +161,31 @@ const localStyles = StyleSheet.create({
   editButton: { backgroundColor: '#2196F3' },
   deleteButton: { backgroundColor: '#f44336' },
   buttonText: { color: '#fff', fontWeight: 'bold' },
-  emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#999' }
+  emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#999' },
+
+  fullImageOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  fullImage: {
+    width: '95%',
+    height: '80%',
+  },
 });

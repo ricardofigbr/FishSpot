@@ -72,7 +72,6 @@ export default function MapScreen() {
     <SafeAreaView style={[styles.container, { flex: 1 }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent={false} />
 
-      {/* Container do mapa ajustado sem depender de estilos inexistentes */}
       <View style={{ flex: 1, width: '100%', height: '100%' }}>
         {location && (
           <MapView

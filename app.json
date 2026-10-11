@@ -20,6 +20,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permitir que o FishSpot use o Face ID para acesso rápido."
+        }
+      ],
       "expo-status-bar",
       [
         "expo-splash-screen",

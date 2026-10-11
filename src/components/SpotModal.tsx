@@ -35,18 +35,60 @@ export default function SpotModal({ visible, onClose, title, initialData, onSave
     }
   }, [initialData, visible]);
 
-  const pickMainImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setMainImage(result.assets[0].uri);
-    }
+  // Função auxiliar para exibir a escolha entre Câmera e Galeria
+  const selectImageSource = (onImagePicked: (uri: string) => void) => {
+    Alert.alert(
+      'Adicionar Foto',
+      'Escolha a origem da foto:',
+      [
+        {
+          text: 'Câmera',
+          onPress: async () => {
+            const perm = await ImagePicker.requestCameraPermissionsAsync();
+            if (!perm.granted) {
+              Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar a câmera.');
+              return;
+            }
+            const result = await ImagePicker.launchCameraAsync({
+              quality: 0.8,
+              allowsEditing: true,
+            });
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+              onImagePicked(result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: 'Galeria',
+          onPress: async () => {
+            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!perm.granted) {
+              Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar a galeria.');
+              return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              quality: 0.8,
+              allowsEditing: true,
+            });
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+              onImagePicked(result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
-  const pickGalleryPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setGalleryPhotos([...galleryPhotos, result.assets[0].uri]);
-    }
+  const pickMainImage = () => {
+    selectImageSource((uri) => setMainImage(uri));
+  };
+
+  const pickGalleryPhoto = () => {
+    selectImageSource((uri) => setGalleryPhotos((prev) => [...prev, uri]));
   };
 
   const handleSave = () => {
