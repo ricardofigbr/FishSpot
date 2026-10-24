@@ -50,6 +50,7 @@ const styles = StyleSheet.create({
   },
   editButton: { backgroundColor: '#2196F3' },
   deleteButton: { backgroundColor: '#f44336' },
+  mapButton: { backgroundColor: '#2e7d32' },
   buttonText: { color: '#fff', fontWeight: 'bold' },
   emptyText: { marginTop: 50, color: '#999', fontSize: 16, textAlign: 'center' },
   syncMessage: { marginTop: 0, marginBottom: 12 },

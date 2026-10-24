@@ -8,11 +8,21 @@ export interface IscaboxSpot extends Coordinates {
   name: string;
   description?: string;
   distanceKm: number;
+  sourceUrl?: string;
 }
 
 type JsonRecord = Record<string, unknown>;
 
+interface IscaboxLocationCandidate {
+  id: string;
+  locationPath: string;
+  name: string;
+  description?: string;
+  searchDistanceKm: number;
+}
+
 const ISCABOX_MCP_URL = 'https://www.iscabox.com/mcp';
+let mcpRequestSequence = 0;
 
 function asRecord(value: unknown): JsonRecord | null {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -39,6 +49,16 @@ function textFrom(record: JsonRecord, keys: string[]): string | undefined {
 
 function coordinatesFrom(value: unknown, depth = 0): Coordinates | null {
   if (depth > 5) return null;
+  if (typeof value === 'string') {
+    const match = value.trim().match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+    if (!match) return null;
+    const latitude = numberFrom(match[1]);
+    const longitude = numberFrom(match[2]);
+    if (latitude === null || longitude === null) return null;
+    const coordinates = { latitude, longitude };
+    return isValidCoordinates(coordinates) ? coordinates : null;
+  }
+
   if (Array.isArray(value) && value.length >= 2) {
     const longitude = numberFrom(value[0]);
     const latitude = numberFrom(value[1]);
@@ -131,7 +151,7 @@ function decodeMcpResponse(body: string): unknown {
   throw new Error('A resposta da iscabox veio em um formato inesperado.');
 }
 
-function extractSpots(payload: unknown): IscaboxSpot[] {
+function toolPayloadFromResponse(payload: unknown): unknown {
   const rpcResponse = asRecord(payload);
   if (rpcResponse?.error) {
     const rpcError = asRecord(rpcResponse.error);
@@ -148,19 +168,25 @@ function extractSpots(payload: unknown): IscaboxSpot[] {
     throw new Error(message ?? 'A iscabox não conseguiu buscar os pontos.');
   }
 
-  const candidates: unknown[] = [];
-  if (result.structuredContent !== undefined) candidates.push(result.structuredContent);
+  if (result.structuredContent !== undefined) return result.structuredContent;
+
+  const parsedContent: unknown[] = [];
   for (const item of content) {
     const text = textFrom(asRecord(item) ?? {}, ['text']);
     if (text) {
       const parsed = parseJsonCandidate(text);
-      if (parsed !== undefined) candidates.push(parsed);
+      if (parsed !== undefined) parsedContent.push(parsed);
     }
   }
-  if (candidates.length === 0) candidates.push(result);
+  if (parsedContent.length === 1) return parsedContent[0];
+  if (parsedContent.length > 1) return parsedContent;
+  return result;
+}
 
-  const spots: IscaboxSpot[] = [];
+function extractLocationCandidates(payload: unknown): IscaboxLocationCandidate[] {
+  const candidates: IscaboxLocationCandidate[] = [];
   const seen = new Set<string>();
+
   const visit = (value: unknown) => {
     if (Array.isArray(value)) {
       value.forEach(visit);
@@ -169,34 +195,85 @@ function extractSpots(payload: unknown): IscaboxSpot[] {
     const record = asRecord(value);
     if (!record) return;
 
-    const coordinates = coordinatesFrom(record);
     const name = textFrom(record, ['name', 'title', 'locationName', 'spotName', 'label', 'local']);
-    if (coordinates && name) {
-      const id =
-        textFrom(record, ['id', 'slug', 'locationPath', 'path']) ??
-        `${name}-${coordinates.latitude}-${coordinates.longitude}`;
+    const locationPath = textFrom(record, ['locationPath', 'path', 'slug']);
+    if (name && locationPath) {
+      const id = textFrom(record, ['id']) ?? locationPath;
       if (!seen.has(id)) {
         seen.add(id);
-        spots.push({
-          ...coordinates,
+        candidates.push({
           id,
+          locationPath,
           name,
-          description: textFrom(record, [
-            'description',
-            'summary',
-            'kind',
-            'type',
-            'city',
-            'municipality',
-          ]),
-          distanceKm: 0,
+          description: textFrom(record, ['description', 'summary', 'city', 'municipality', 'kind', 'type']),
+          searchDistanceKm: numberFrom(record.distanceKm) ?? Number.POSITIVE_INFINITY,
         });
       }
     }
     Object.values(record).forEach(visit);
   };
-  candidates.forEach(visit);
-  return spots;
+  visit(payload);
+  return candidates.sort((first, second) => first.searchDistanceKm - second.searchDistanceKm);
+}
+
+function sourceUrlFrom(record: JsonRecord): string | undefined {
+  const links = Array.isArray(record.links) ? record.links : [];
+  for (const link of links) {
+    const linkRecord = asRecord(link);
+    const url = textFrom(linkRecord ?? {}, ['url']);
+    if (url) return url;
+  }
+  return textFrom(record, ['blogUrl']);
+}
+
+async function callIscaboxTool(name: string, args: JsonRecord): Promise<unknown> {
+  const response = await fetch(ISCABOX_MCP_URL, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json, text/event-stream',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: `${Date.now()}-${++mcpRequestSequence}`,
+      method: 'tools/call',
+      params: { name, arguments: args },
+    }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After');
+      throw new Error(
+        retryAfter
+          ? `Limite de buscas atingido. Tente novamente em ${retryAfter} segundos.`
+          : 'Limite de buscas atingido. Tente novamente em instantes.',
+      );
+    }
+    throw new Error(`Não foi possível consultar a iscabox (erro ${response.status}).`);
+  }
+
+  return toolPayloadFromResponse(decodeMcpResponse(await response.text()));
+}
+
+function extractLocationDetails(payload: unknown): JsonRecord | null {
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const details = extractLocationDetails(item);
+      if (details) return details;
+    }
+    return null;
+  }
+
+  const record = asRecord(payload);
+  if (!record) return null;
+  if (coordinatesFrom(record) && textFrom(record, ['name', 'title', 'locationName'])) return record;
+
+  for (const value of Object.values(record)) {
+    const details = extractLocationDetails(value);
+    if (details) return details;
+  }
+  return null;
 }
 
 export function distanceInKilometers(from: Coordinates, to: Coordinates): number {
@@ -222,41 +299,43 @@ export function formatSpotDistance(distanceKm: number): string {
 export async function fetchNearestIscaboxSpots(
   coordinates: Coordinates,
 ): Promise<IscaboxSpot[]> {
-  const response = await fetch(ISCABOX_MCP_URL, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json, text/event-stream',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: Date.now(),
-      method: 'tools/call',
-      params: {
-        name: 'search_locations',
-        arguments: {
-          lat: coordinates.latitude,
-          lng: coordinates.longitude,
-          limit: 8,
-        },
-      },
-    }),
+  const searchPayload = await callIscaboxTool('search_locations', {
+    lat: coordinates.latitude,
+    lng: coordinates.longitude,
+    limit: 8,
   });
+  const candidates = extractLocationCandidates(searchPayload);
+  if (candidates.length === 0) return [];
 
-  if (!response.ok) {
-    if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After');
-      throw new Error(
-        retryAfter
-          ? `Limite de buscas atingido. Tente novamente em ${retryAfter} segundos.`
-          : 'Limite de buscas atingido. Tente novamente em instantes.',
-      );
-    }
-    throw new Error(`Não foi possível consultar a iscabox (erro ${response.status}).`);
+  const detailResults = await Promise.allSettled(
+    candidates.slice(0, 8).map(async (candidate) => {
+      const detailPayload = await callIscaboxTool('get_location', {
+        locationPath: candidate.locationPath,
+      });
+      const details = extractLocationDetails(detailPayload);
+      const locationCoordinates = details ? coordinatesFrom(details) : null;
+      if (!details || !locationCoordinates) return null;
+
+      return {
+        ...locationCoordinates,
+        id: candidate.id,
+        name: textFrom(details, ['name', 'title', 'locationName']) ?? candidate.name,
+        description:
+          textFrom(details, ['description', 'summary']) ?? candidate.description,
+        distanceKm: distanceInKilometers(coordinates, locationCoordinates),
+        sourceUrl: sourceUrlFrom(details),
+      } satisfies IscaboxSpot;
+    }),
+  );
+
+  const spots = detailResults.flatMap((result) =>
+    result.status === 'fulfilled' && result.value ? [result.value] : [],
+  );
+  if (spots.length === 0) {
+    const failedRequest = detailResults.find((result) => result.status === 'rejected');
+    if (failedRequest?.status === 'rejected') throw failedRequest.reason;
+    throw new Error('A iscabox encontrou locais, mas não retornou coordenadas para exibi-los.');
   }
 
-  return extractSpots(decodeMcpResponse(await response.text()))
-    .map((spot) => ({ ...spot, distanceKm: distanceInKilometers(coordinates, spot) }))
-    .sort((first, second) => first.distanceKm - second.distanceKm)
-    .slice(0, 5);
+  return spots.sort((first, second) => first.distanceKm - second.distanceKm).slice(0, 5);
 }

@@ -1,21 +1,27 @@
-import React, { useCallback, useContext } from 'react';
+import React, { useCallback, useContext, useRef } from 'react';
 import {
+  Alert,
   ActivityIndicator,
   FlatList,
+  Linking,
   RefreshControl,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SpotsContext } from '../../contexts/SpotsContext';
+import type { BottomTabParamList } from '../../routes/navigationTypes';
 import { formatSpotDistance } from '../../services/iscaboxApi';
 import type { IscaboxSpot } from '../../services/iscaboxApi';
 import styles from './styles';
 
 export default function IscaboxApiPage() {
+  const navigation = useNavigation<BottomTabNavigationProp<BottomTabParamList>>();
+  const mapRequestSequence = useRef(0);
   const {
     iscaboxSpots,
     iscaboxLoading,
@@ -30,18 +36,54 @@ export default function IscaboxApiPage() {
     }, [refreshIscaboxSpots]),
   );
 
-  const renderSpot = ({ item, index }: { item: IscaboxSpot; index: number }) => (
-    <View style={styles.spotCard}>
-      <View style={styles.rankBadge}>
-        <Text style={styles.rankText}>{index + 1}</Text>
+  const handleGoToSpot = (spot: IscaboxSpot) => {
+    mapRequestSequence.current += 1;
+    navigation.navigate('Map', {
+      focusRequest: {
+        latitude: spot.latitude,
+        longitude: spot.longitude,
+        requestId: `iscabox-${spot.id}-${mapRequestSequence.current}`,
+      },
+    });
+  };
+
+  const renderSpot = ({ item, index }: { item: IscaboxSpot; index: number }) => {
+    const sourceUrl = item.sourceUrl;
+    return (
+      <View style={styles.spotCard}>
+        <View style={styles.rankBadge}>
+          <Text style={styles.rankText}>{index + 1}</Text>
+        </View>
+        <View style={styles.spotInfo}>
+          <Text style={styles.spotName}>{item.name}</Text>
+          {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
+          <Text style={styles.distance}>{formatSpotDistance(item.distanceKm)}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Ir para ${item.name} no mapa`}
+            onPress={() => handleGoToSpot(item)}
+            style={styles.goToButton}
+          >
+            <Ionicons name="navigate-outline" size={16} color="#fff" />
+            <Text style={styles.goToButtonText}>Ir para</Text>
+          </TouchableOpacity>
+          {sourceUrl ? (
+            <TouchableOpacity
+              accessibilityRole="link"
+              onPress={() => {
+                void Linking.openURL(sourceUrl).catch(() => {
+                  Alert.alert('Não foi possível abrir a fonte', 'Tente novamente em instantes.');
+                });
+              }}
+              style={styles.sourceButton}
+            >
+              <Text style={styles.sourceLink}>Ver na Iscabox</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
-      <View style={styles.spotInfo}>
-        <Text style={styles.spotName}>{item.name}</Text>
-        {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
-        <Text style={styles.distance}>{formatSpotDistance(item.distanceKm)}</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderEmpty = () => {
     if (iscaboxLoading && !iscaboxHasLoaded) {
@@ -100,7 +142,7 @@ export default function IscaboxApiPage() {
           <View style={styles.header}>
             <View style={styles.headerCopy}>
               <Text style={styles.title}>Pontos próximos</Text>
-              <Text style={styles.subtitle}>Os cinco locais de pesca mais perto de você</Text>
+              <Text style={styles.subtitle}>Os cinco locais de pesca mais perto de você · Iscabox</Text>
             </View>
             <TouchableOpacity
               accessibilityLabel="Atualizar pontos próximos"

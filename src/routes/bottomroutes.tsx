@@ -5,8 +5,9 @@ import List from '../pages/list/ListPage';
 import Map from '../pages/map/MapPage';
 import User from '../pages/user/UserPage';
 import Iscabox from '../pages/iscaboxAPI/IscaboxApiPage';
+import type { BottomTabParamList } from './navigationTypes';
 
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<BottomTabParamList>();
 
 const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
   List: 'list',

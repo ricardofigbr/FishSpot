@@ -1,15 +1,20 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Alert, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import { SpotsContext } from '../../contexts/SpotsContext';
 import SpotModal from '../../components/SpotModal';
+import type { BottomTabParamList } from '../../routes/navigationTypes';
 import styles from './styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatSpotDistance } from '../../services/iscaboxApi';
 
 export default function MapScreen() {
+  const route = useRoute<RouteProp<BottomTabParamList, 'Map'>>();
+  const focusRequest = route.params?.focusRequest;
   const {
     spots,
     spotsPendingWrites,
@@ -23,6 +28,7 @@ export default function MapScreen() {
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [pendingCoords, setPendingCoords] = useState<Location.LocationObjectCoords | null>(null);
+  const mapCoordinates = focusRequest ?? location;
 
   useFocusEffect(
     useCallback(() => {
@@ -69,7 +75,7 @@ export default function MapScreen() {
     }
   };
 
-  if (loading && !location) {
+  if (loading && !location && !focusRequest) {
     return (
       <SafeAreaView style={styles.center}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -80,19 +86,22 @@ export default function MapScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" translucent={false} />
+      <StatusBar style="dark" />
 
       <View style={styles.mapFrame}>
-        {location && (
+        {mapCoordinates && (
           <MapView
+            key={focusRequest
+              ? `${focusRequest.requestId}-${focusRequest.latitude}-${focusRequest.longitude}`
+              : 'current-location'}
             style={styles.map}
             initialRegion={{
-              latitude: location.latitude,
-              longitude: location.longitude,
+              latitude: mapCoordinates.latitude,
+              longitude: mapCoordinates.longitude,
               latitudeDelta: 0.01,
               longitudeDelta: 0.01,
             }}
-            showsUserLocation
+            showsUserLocation={Boolean(location)}
           >
             {spots?.map((spot) => (
               <Marker
@@ -109,8 +118,8 @@ export default function MapScreen() {
                 title={spot.name}
                 description={
                   spot.description
-                    ? `${formatSpotDistance(spot.distanceKm)} • ${spot.description}`
-                    : formatSpotDistance(spot.distanceKm)
+                    ? `${formatSpotDistance(spot.distanceKm)} • Iscabox • ${spot.description}`
+                    : `${formatSpotDistance(spot.distanceKm)} • Iscabox`
                 }
                 pinColor="#2e7d32"
               />

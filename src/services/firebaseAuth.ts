@@ -4,6 +4,7 @@ import {
   reauthenticateWithCredential,
   signInWithEmailAndPassword,
   signOut,
+  updateEmail,
   updatePassword,
   updateProfile,
   User,
@@ -53,16 +54,30 @@ export async function signInWithUsername(username: string, password: string) {
   return credential.user;
 }
 
-export async function updateAccountName(user: User, displayName: string) {
-  await updateProfile(user, { displayName: displayName.trim() });
+export async function updateAccountProfile(
+  user: User,
+  displayName: string,
+  photoURL: string | null,
+) {
+  await updateProfile(user, { displayName: displayName.trim(), photoURL });
 }
 
-export async function updateAccountPassword(user: User, currentPassword: string, newPassword: string) {
+export async function updateAccountCredentials(
+  user: User,
+  currentPassword: string,
+  username: string | null,
+  newPassword: string | null,
+) {
   if (!user.email) throw new Error('A conta Firebase não possui um identificador de login.');
 
   const credential = EmailAuthProvider.credential(user.email, currentPassword);
   await reauthenticateWithCredential(user, credential);
-  await updatePassword(user, newPassword);
+
+  if (username) {
+    const nextEmail = usernameToFirebaseEmail(username);
+    if (nextEmail !== user.email) await updateEmail(user, nextEmail);
+  }
+  if (newPassword) await updatePassword(user, newPassword);
 }
 
 export async function signOutAccount() {

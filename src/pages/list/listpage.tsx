@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,14 @@ import {
 import { SpotsContext, FishingSpot } from '../../contexts/SpotsContext';
 import SpotModal from '../../components/SpotModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { BottomTabParamList } from '../../routes/navigationTypes';
 import styles from './styles';
 
 export default function ListScreen() {
+  const navigation = useNavigation<BottomTabNavigationProp<BottomTabParamList>>();
+  const mapRequestSequence = useRef(0);
   const {
     spots,
     spotsLoading,
@@ -32,6 +37,17 @@ export default function ListScreen() {
   const handleOpenEdit = (spot: FishingSpot) => {
     setEditingSpot(spot);
     setModalVisible(true);
+  };
+
+  const handleGoToSpot = (spot: FishingSpot) => {
+    mapRequestSequence.current += 1;
+    navigation.navigate('Map', {
+      focusRequest: {
+        latitude: spot.latitude,
+        longitude: spot.longitude,
+        requestId: `saved-${spot.id}-${mapRequestSequence.current}`,
+      },
+    });
   };
 
   const handleDelete = async (spotId: string) => {
@@ -57,7 +73,7 @@ export default function ListScreen() {
                 {spotsError ?? 'Alterações aguardando sincronização.'}
               </Text>
             )
-            : null
+            : undefined
         )}
         renderItem={({ item }) => (
           <View style={styles.card}>
@@ -96,6 +112,15 @@ export default function ListScreen() {
             )}
             
             <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`Ir para ${item.name} no mapa`}
+                style={[styles.button, styles.mapButton]}
+                onPress={() => handleGoToSpot(item)}
+              >
+                <Text style={styles.buttonText}>Ir para</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity 
                 style={[styles.button, styles.editButton]}
                 onPress={() => handleOpenEdit(item)}
